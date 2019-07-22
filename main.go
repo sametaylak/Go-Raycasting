@@ -9,6 +9,12 @@ import (
 	"github.com/veandco/go-sdl2/sdl"
 )
 
+func Distance(a, b Vector2D) float64 {
+	first := math.Pow(float64(a.x-b.x), 2)
+	second := math.Pow(float64(a.y-b.y), 2)
+	return math.Sqrt(first + second)
+}
+
 type Vector2D struct {
 	x float64
 	y float64
@@ -34,10 +40,6 @@ func (player *Player) show(renderer *sdl.Renderer) {
 		radian := float64(player.rotation+int32(i)) * math.Pi / 180
 		ray.dir.x = math.Cos(radian) * 300
 		ray.dir.y = math.Sin(radian) * 300
-	}
-
-	for _, ray := range player.rays {
-		ray.show(renderer)
 	}
 }
 
@@ -103,11 +105,21 @@ var runningMutex sync.Mutex
 
 func run() int {
 	var window *sdl.Window
+	var secondWindow *sdl.Window
 	var renderer *sdl.Renderer
+	var secondRenderer *sdl.Renderer
 	var err error
 
 	sdl.Do(func() {
 		window, err = sdl.CreateWindow(
+			WindowTitle,
+			sdl.WINDOWPOS_UNDEFINED,
+			sdl.WINDOWPOS_UNDEFINED,
+			WindowWidth,
+			WindowHeight,
+			sdl.WINDOW_OPENGL,
+		)
+		secondWindow, err = sdl.CreateWindow(
 			WindowTitle,
 			sdl.WINDOWPOS_UNDEFINED,
 			sdl.WINDOWPOS_UNDEFINED,
@@ -123,12 +135,18 @@ func run() int {
 	defer func() {
 		sdl.Do(func() {
 			window.Destroy()
+			secondWindow.Destroy()
 		})
 	}()
 
 	sdl.Do(func() {
 		renderer, err = sdl.CreateRenderer(
 			window,
+			-1,
+			sdl.RENDERER_ACCELERATED,
+		)
+		secondRenderer, err = sdl.CreateRenderer(
+			secondWindow,
 			-1,
 			sdl.RENDERER_ACCELERATED,
 		)
@@ -140,11 +158,13 @@ func run() int {
 	defer func() {
 		sdl.Do(func() {
 			renderer.Destroy()
+			secondRenderer.Destroy()
 		})
 	}()
 
 	sdl.Do(func() {
 		renderer.Clear()
+		secondRenderer.Clear()
 	})
 
 	running := true
@@ -176,8 +196,13 @@ func run() int {
 			renderer.Clear()
 			renderer.SetDrawColor(0, 0, 0, 255)
 			renderer.FillRect(&sdl.Rect{0, 0, WindowWidth, WindowHeight})
+
+			secondRenderer.Clear()
+			secondRenderer.SetDrawColor(0, 0, 0, 255)
+			secondRenderer.FillRect(&sdl.Rect{0, 0, WindowWidth, WindowHeight})
 		})
 
+		// First View
 		sdl.Do(func() {
 			renderer.SetDrawColor(255, 255, 255, 255)
 			wall.show(renderer)
@@ -185,6 +210,26 @@ func run() int {
 			for _, ray := range player.rays {
 				hit := ray.cast(wall)
 				if hit != nil {
+					// fmt.Fprintf(os.Stdout, "Distance: %v\n", Distance(ray.pos, *hit))
+					renderer.SetDrawColor(255, 0, 0, 255)
+					renderer.DrawLine(
+						int32(ray.pos.x),
+						int32(ray.pos.y),
+						int32(hit.x),
+						int32(hit.y),
+					)
+				}
+			}
+		})
+		// Second View
+		sdl.Do(func() {
+			renderer.SetDrawColor(255, 255, 255, 255)
+			wall.show(renderer)
+			player.show(renderer)
+			for _, ray := range player.rays {
+				hit := ray.cast(wall)
+				if hit != nil {
+					// fmt.Fprintf(os.Stdout, "Distance: %v\n", Distance(ray.pos, *hit))
 					renderer.SetDrawColor(255, 0, 0, 255)
 					renderer.DrawLine(
 						int32(ray.pos.x),
@@ -198,6 +243,7 @@ func run() int {
 
 		sdl.Do(func() {
 			renderer.Present()
+			secondRenderer.Present()
 			sdl.Delay(1000 / FrameRate)
 		})
 	}
@@ -209,14 +255,14 @@ func main() {
 	wall = Boundary{a: Vector2D{x: 300, y: 100}, b: Vector2D{x: 300, y: 300}}
 
 	var rays []*Ray
-	for i := 0; i < 60; i += 1 {
+	for i := -30; i < 30; i += 1 {
 		radian := float64(i) * math.Pi / 180
 		rays = append(rays, &Ray{
 			pos: Vector2D{x: 100, y: 200},
 			dir: Vector2D{x: math.Cos(radian) * 300, y: math.Sin(radian) * 300},
 		})
 	}
-	player.rotation = 0
+	player.rotation = -30
 	player.pos = Vector2D{x: 100, y: 200}
 	player.rays = rays
 
