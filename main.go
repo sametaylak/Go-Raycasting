@@ -190,7 +190,7 @@ func main() {
 	wall = Boundary{a: Vector2D{x: 300, y: 100}, b: Vector2D{x: 300, y: 300}}
 
 	var rays []*Ray
-	for i := 0; i < 360; i += 2 {
+	for i := 0; i < 60; i += 2 {
 		radian := float64(i) * math.Pi / 180
 		rays = append(rays, &Ray{
 			pos: Vector2D{x: 100, y: 200},
