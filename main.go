@@ -30,15 +30,11 @@ func (player *Player) move(x, y float64) {
 }
 
 func (player *Player) show(renderer *sdl.Renderer) {
-	var rays []*Ray
-	for i := player.rotation; i < player.rotation+60; i += 2 {
-		radian := float64(i) * math.Pi / 180
-		rays = append(rays, &Ray{
-			pos: Vector2D{x: 100, y: 200},
-			dir: Vector2D{x: math.Cos(radian) * 300, y: math.Sin(radian) * 300},
-		})
+	for i, ray := range player.rays {
+		radian := float64(player.rotation+int32(i)) * math.Pi / 180
+		ray.dir.x = math.Cos(radian) * 300
+		ray.dir.y = math.Sin(radian) * 300
 	}
-	player.rays = rays
 
 	for _, ray := range player.rays {
 		ray.show(renderer)
@@ -212,8 +208,17 @@ func run() int {
 func main() {
 	wall = Boundary{a: Vector2D{x: 300, y: 100}, b: Vector2D{x: 300, y: 300}}
 
+	var rays []*Ray
+	for i := 0; i < 60; i += 1 {
+		radian := float64(i) * math.Pi / 180
+		rays = append(rays, &Ray{
+			pos: Vector2D{x: 100, y: 200},
+			dir: Vector2D{x: math.Cos(radian) * 300, y: math.Sin(radian) * 300},
+		})
+	}
 	player.rotation = 0
 	player.pos = Vector2D{x: 100, y: 200}
+	player.rays = rays
 
 	var exitcode int
 	sdl.Main(func() {
