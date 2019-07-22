@@ -6,8 +6,13 @@ import (
 	"os"
 	"sync"
 
+	"github.com/cznic/mathutil"
 	"github.com/veandco/go-sdl2/sdl"
 )
+
+func Map(n, start1, stop1, start2, stop2 int32) int32 {
+	return ((n-start1)/(stop1-start1))*(stop2-start2) + start2
+}
 
 func Distance(a, b Vector2D) float64 {
 	first := math.Pow(float64(a.x-b.x), 2)
@@ -100,6 +105,7 @@ const (
 
 var wall Boundary
 var player Player
+var distances []float64
 
 var runningMutex sync.Mutex
 
@@ -207,10 +213,12 @@ func run() int {
 			renderer.SetDrawColor(255, 255, 255, 255)
 			wall.show(renderer)
 			player.show(renderer)
-			for _, ray := range player.rays {
+
+			distances = make([]float64, len(player.rays))
+			for i, ray := range player.rays {
 				hit := ray.cast(wall)
 				if hit != nil {
-					// fmt.Fprintf(os.Stdout, "Distance: %v\n", Distance(ray.pos, *hit))
+					distances[i] = Distance(ray.pos, *hit)
 					renderer.SetDrawColor(255, 0, 0, 255)
 					renderer.DrawLine(
 						int32(ray.pos.x),
@@ -218,25 +226,22 @@ func run() int {
 						int32(hit.x),
 						int32(hit.y),
 					)
+				} else {
+					distances[i] = WindowWidth
 				}
 			}
 		})
 		// Second View
 		sdl.Do(func() {
-			renderer.SetDrawColor(255, 255, 255, 255)
-			wall.show(renderer)
-			player.show(renderer)
-			for _, ray := range player.rays {
-				hit := ray.cast(wall)
-				if hit != nil {
-					// fmt.Fprintf(os.Stdout, "Distance: %v\n", Distance(ray.pos, *hit))
-					renderer.SetDrawColor(255, 0, 0, 255)
-					renderer.DrawLine(
-						int32(ray.pos.x),
-						int32(ray.pos.y),
-						int32(hit.x),
-						int32(hit.y),
-					)
+			w := WindowWidth / len(distances)
+			for i, p := range distances {
+				if p == WindowWidth {
+					secondRenderer.SetDrawColor(0, 0, 0, 255)
+					secondRenderer.FillRect(&sdl.Rect{int32(i * w), 0, int32(w), WindowHeight})
+				} else {
+					clamped := uint8(mathutil.ClampInt32(int32(p), 0, 255))
+					secondRenderer.SetDrawColor(255-clamped, 255-clamped, 255-clamped, 255)
+					secondRenderer.FillRect(&sdl.Rect{int32(i * w), WindowHeight / 4, int32(w), 255 - int32(clamped)})
 				}
 			}
 		})
