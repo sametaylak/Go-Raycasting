@@ -15,8 +15,9 @@ type Vector2D struct {
 }
 
 type Player struct {
-	pos  Vector2D
-	rays []*Ray
+	pos      Vector2D
+	rotation int32
+	rays     []*Ray
 }
 
 func (player *Player) move(x, y float64) {
@@ -29,6 +30,16 @@ func (player *Player) move(x, y float64) {
 }
 
 func (player *Player) show(renderer *sdl.Renderer) {
+	var rays []*Ray
+	for i := player.rotation; i < player.rotation+60; i += 2 {
+		radian := float64(i) * math.Pi / 180
+		rays = append(rays, &Ray{
+			pos: Vector2D{x: 100, y: 200},
+			dir: Vector2D{x: math.Cos(radian) * 300, y: math.Sin(radian) * 300},
+		})
+	}
+	player.rays = rays
+
 	for _, ray := range player.rays {
 		ray.show(renderer)
 	}
@@ -144,11 +155,23 @@ func run() int {
 	for running {
 		sdl.Do(func() {
 			for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
-				switch event.(type) {
+				switch t := event.(type) {
 				case *sdl.QuitEvent:
 					runningMutex.Lock()
 					running = false
 					runningMutex.Unlock()
+				case *sdl.KeyboardEvent:
+					if t.Keysym.Sym == sdl.K_ESCAPE {
+						runningMutex.Lock()
+						running = false
+						runningMutex.Unlock()
+					}
+					if t.Keysym.Sym == sdl.K_RIGHT {
+						player.rotation += 2
+					}
+					if t.Keysym.Sym == sdl.K_LEFT {
+						player.rotation -= 2
+					}
 				}
 			}
 			x, y, _ := sdl.GetMouseState()
@@ -189,16 +212,8 @@ func run() int {
 func main() {
 	wall = Boundary{a: Vector2D{x: 300, y: 100}, b: Vector2D{x: 300, y: 300}}
 
-	var rays []*Ray
-	for i := 0; i < 60; i += 2 {
-		radian := float64(i) * math.Pi / 180
-		rays = append(rays, &Ray{
-			pos: Vector2D{x: 100, y: 200},
-			dir: Vector2D{x: math.Cos(radian) * 300, y: math.Sin(radian) * 300},
-		})
-	}
+	player.rotation = 0
 	player.pos = Vector2D{x: 100, y: 200}
-	player.rays = rays
 
 	var exitcode int
 	sdl.Main(func() {
