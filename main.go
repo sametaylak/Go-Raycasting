@@ -113,8 +113,8 @@ const (
 	FrameRate    = 60
 )
 
-var wall Boundary
 var player Player
+var walls []Boundary
 var distances []float64
 
 var runningMutex sync.Mutex
@@ -221,28 +221,31 @@ func run() int {
 		// First View
 		sdl.Do(func() {
 			renderer.SetDrawColor(255, 255, 255, 255)
-			wall.show(renderer)
-			player.show(renderer)
-
-			distances = make([]float64, len(player.rays))
-			for i, ray := range player.rays {
-				hit := ray.cast(wall)
-				if hit != nil {
-					distances[i] = Distance(ray.pos, *hit)
-					renderer.SetDrawColor(255, 0, 0, 255)
-					renderer.DrawLine(
-						int32(ray.pos.x),
-						int32(ray.pos.y),
-						int32(hit.x),
-						int32(hit.y),
-					)
-				} else {
-					distances[i] = WindowWidth
-				}
+			for _, wall := range walls {
+				wall.show(renderer)
 			}
+			player.show(renderer)
 		})
 		// Second View
 		sdl.Do(func() {
+			distances = make([]float64, len(player.rays))
+			for i, ray := range player.rays {
+				for _, wall := range walls {
+					hit := ray.cast(wall)
+					if hit != nil {
+						distances[i] = Distance(ray.pos, *hit)
+						renderer.SetDrawColor(255, 0, 0, 255)
+						renderer.DrawLine(
+							int32(ray.pos.x),
+							int32(ray.pos.y),
+							int32(hit.x),
+							int32(hit.y),
+						)
+					} else {
+						distances[i] = WindowWidth
+					}
+				}
+			}
 			w := WindowWidth / len(distances)
 			for i, p := range distances {
 				if p == WindowWidth {
@@ -267,7 +270,14 @@ func run() int {
 }
 
 func main() {
-	wall = Boundary{a: Vector2D{x: 300, y: 100}, b: Vector2D{x: 300, y: 300}}
+	walls = append(walls, Boundary{
+		a: Vector2D{x: 300, y: 100},
+		b: Vector2D{x: 300, y: 300},
+	})
+	walls = append(walls, Boundary{
+		a: Vector2D{x: 300, y: 100},
+		b: Vector2D{x: 100, y: 100},
+	})
 
 	var rays []*Ray
 	for i := -30; i < 30; i += 1 {
