@@ -41,6 +41,16 @@ func (player *Player) move(x, y float64) {
 }
 
 func (player *Player) show(renderer *sdl.Renderer) {
+	headingRadian := float64(player.rotation+30) * math.Pi / 180
+	headingX := math.Cos(headingRadian) * 300
+	headingY := math.Sin(headingRadian) * 300
+	renderer.SetDrawColor(0, 255, 0, 255)
+	renderer.DrawLine(
+		int32(player.pos.x),
+		int32(player.pos.y),
+		int32(player.pos.x+headingX),
+		int32(player.pos.y+headingY),
+	)
 	for i, ray := range player.rays {
 		radian := float64(player.rotation+int32(i)) * math.Pi / 180
 		ray.dir.x = math.Cos(radian) * 300
