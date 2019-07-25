@@ -26,9 +26,10 @@ type Vector2D struct {
 }
 
 type Player struct {
-	pos      Vector2D
-	rotation int32
-	rays     []*Ray
+	pos        Vector2D
+	rotation   int32
+	headingRay *Ray
+	rays       []*Ray
 }
 
 func (player *Player) move(x, y float64) {
@@ -42,15 +43,11 @@ func (player *Player) move(x, y float64) {
 
 func (player *Player) show(renderer *sdl.Renderer) {
 	headingRadian := float64(player.rotation+30) * math.Pi / 180
-	headingX := math.Cos(headingRadian) * 300
-	headingY := math.Sin(headingRadian) * 300
-	renderer.SetDrawColor(0, 255, 0, 255)
-	renderer.DrawLine(
-		int32(player.pos.x),
-		int32(player.pos.y),
-		int32(player.pos.x+headingX),
-		int32(player.pos.y+headingY),
-	)
+	player.headingRay.pos.x = player.pos.x
+	player.headingRay.pos.y = player.pos.y
+	player.headingRay.dir.x = math.Cos(headingRadian) * 300
+	player.headingRay.dir.y = math.Sin(headingRadian) * 300
+	player.headingRay.show(renderer)
 	for i, ray := range player.rays {
 		radian := float64(player.rotation+int32(i)) * math.Pi / 180
 		ray.dir.x = math.Cos(radian) * 300
@@ -229,11 +226,28 @@ func run() int {
 		// Second View
 		sdl.Do(func() {
 			distances = make([]float64, len(player.rays))
+			var playerHeadingHit *Vector2D
+			for _, wall := range walls {
+				playerHeadingHit = player.headingRay.cast(wall)
+				if playerHeadingHit != nil {
+					break
+				}
+			}
 			for i, ray := range player.rays {
 				for _, wall := range walls {
 					hit := ray.cast(wall)
-					if hit != nil {
-						distances[i] = Distance(ray.pos, *hit)
+					if hit != nil && playerHeadingHit != nil {
+						eucDistance := Distance(ray.pos, *hit)
+						dotProduct := (hit.x * playerHeadingHit.x) + (hit.y * playerHeadingHit.y)
+						aMag := math.Sqrt(math.Pow(hit.x, 2) + math.Pow(hit.y, 2))
+						bMag := math.Sqrt(math.Pow(playerHeadingHit.x, 2) + math.Pow(playerHeadingHit.y, 2))
+						angle := dotProduct / (math.Abs(aMag) * math.Abs(bMag))
+
+						radian := float64(angle) * math.Pi / 180
+						distances[i] = math.Cos(radian) * eucDistance
+						fmt.Fprintf(os.Stdout, "Euc Distance: %v\n", eucDistance)
+						fmt.Fprintf(os.Stdout, "Fish Distance: %v\n", math.Cos(radian)*eucDistance)
+
 						renderer.SetDrawColor(255, 0, 0, 255)
 						renderer.DrawLine(
 							int32(ray.pos.x),
@@ -241,6 +255,7 @@ func run() int {
 							int32(hit.x),
 							int32(hit.y),
 						)
+						break
 					} else {
 						distances[i] = WindowWidth
 					}
@@ -278,6 +293,14 @@ func main() {
 		a: Vector2D{x: 300, y: 100},
 		b: Vector2D{x: 100, y: 100},
 	})
+	walls = append(walls, Boundary{
+		a: Vector2D{x: 100, y: 100},
+		b: Vector2D{x: 100, y: 300},
+	})
+	walls = append(walls, Boundary{
+		a: Vector2D{x: 100, y: 300},
+		b: Vector2D{x: 300, y: 300},
+	})
 
 	var rays []*Ray
 	for i := -30; i < 30; i += 1 {
@@ -286,6 +309,9 @@ func main() {
 			pos: Vector2D{x: 100, y: 200},
 			dir: Vector2D{x: math.Cos(radian) * 300, y: math.Sin(radian) * 300},
 		})
+	}
+	player.headingRay = &Ray{
+		pos: Vector2D{x: 100, y: 200},
 	}
 	player.rotation = -30
 	player.pos = Vector2D{x: 100, y: 200}
